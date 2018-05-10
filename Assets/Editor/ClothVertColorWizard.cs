@@ -129,9 +129,11 @@ public class ClothVertColorWizard : ScriptableWizard
 
         var vertexLookup = new Dictionary<int, List<Vertex3Hashed>>();
 
+        var skinTransformNoScale = Matrix4x4.TRS(m_source.transform.position, m_source.transform.rotation, Vector3.one);
+
         for (int index = 0; index < bakedSkin.vertices.Length; index++)
         {
-            var skinVertWorldSpace = m_source.transform.TransformPoint(bakedSkin.vertices[index]);
+            var skinVertWorldSpace = skinTransformNoScale.MultiplyPoint3x4(bakedSkin.vertices[index]); //m_source.transform.TransformPoint(bakedSkin.vertices[index]);
 
             var vertex3Hashed = new Vertex3Hashed(skinVertWorldSpace, bakedSkin.colors[index], m_cellSize);
 
@@ -146,14 +148,17 @@ public class ClothVertColorWizard : ScriptableWizard
             }
         }
 
+        var destSkin = m_dest.GetComponent<SkinnedMeshRenderer>();
+        var rootBone = destSkin.rootBone != null ? destSkin.rootBone : destSkin.transform;
+        var rootBoneTransformNoScale = Matrix4x4.TRS(rootBone.position, rootBone.rotation, Vector3.one);
+
         for (var i = 0; i < m_dest.coefficients.Length; ++i)
         {
             //Find nearest vert in source mesh
             var closestVertDistance = float.MaxValue;
             var closestVertColour = Color.black;
-
-            var rootBone = m_source.rootBone != null ? m_source.rootBone : m_source.transform;
-            var clothVertWorldSpace = rootBone.TransformPoint(m_dest.vertices[i]);
+            
+            var clothVertWorldSpace = rootBoneTransformNoScale.MultiplyPoint3x4(m_dest.vertices[i]);
 
             //Check the cube of 27 cells around me
             var hashList = new Vertex3Hashed(clothVertWorldSpace, Color.black, m_cellSize).GetSurroundingHashCodes(1);
@@ -172,7 +177,6 @@ public class ClothVertColorWizard : ScriptableWizard
                             closestVertColour = vertex3Hashed.Color;
                             closestVertDistance = dist;
                         }
-
                     }
                 }
             }
